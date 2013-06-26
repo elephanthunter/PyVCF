@@ -158,7 +158,7 @@ class _vcf_metadata_parser(object):
                        match.group('type'), match.group('desc'))
 
         return (match.group('id'), form)
-    
+
     def read_contig(self, contig_string):
         '''Read a meta-contigrmation INFO line.'''
         match = self.contig_pattern.match(contig_string)
@@ -285,7 +285,7 @@ class Reader(object):
             elif line.startswith('##FORMAT'):
                 key, val = parser.read_format(line)
                 self.formats[key] = val
-            
+
             elif line.startswith('##contig'):
                 key, val = parser.read_contig(line)
                 self.contigs[key] = val
@@ -406,13 +406,28 @@ class Reader(object):
         _map = self._map
 
         nfields = len(samp_fmt._fields)
+        n_alts = len(site.ALT)
+        n_samples = len(samples)
 
         for name, sample in itertools.izip(self.samples, samples):
-
             # parse the data for this sample
             sampdat = [None] * nfields
+            sampvals = sample.split(':')
 
-            for i, vals in enumerate(sample.split(':')):
+            for i in range(nfields):
+                if i >= len(sampvals):
+                    entry_num = samp_fmt._nums[i]
+                    sampdat[i] = None
+                    if entry_num == -1 and n_alts > 1:  # Equal to the number of alleles in a given record
+                        sampdat[i] = [None]*n_alts
+                    elif entry_num == -2 and n_samples > 1:  # Equal to the number of genotypes in a given record
+                        sampdat[i] = [None]*n_samples
+                    elif entry_num == 0:
+                        sampdat[i] = False
+                    elif entry_num > 1:
+                        sampdat[i] = [None]*entry_num
+                    continue
+                vals = sampvals[i]
 
                 # short circuit the most common
                 if vals == '.' or vals == './.':
