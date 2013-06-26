@@ -20,6 +20,7 @@ def parse_samples(
     cdef list sampvals
     n_samples = len(samples)
     n_formats = len(samp_fmt._fields)
+    n_alts = len(site.ALT)
 
     for i in range(n_samples):
         name = names[i]
@@ -32,7 +33,17 @@ def parse_samples(
 
         for j in range(n_formats):
             if j >= len(sampvals):
-                break
+                entry_num = samp_fmt_nums[j]
+                sampdat[j] = None
+                if entry_num == -1 and n_alts > 1:  # Equal to the number of alleles in a given record
+                    sampdat[j] = [None]*n_alts
+                elif entry_num == -2 and n_samples > 1:  # Equal to the number of genotypes in a given record
+                    sampdat[j] = [None]*n_samples
+                elif entry_num == 0:
+                    sampdat[j] = False
+                elif entry_num > 1:
+                    sampdat[j] = [None]*entry_num
+                continue
             vals = sampvals[j]
 
             # short circuit the most common
