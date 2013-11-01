@@ -584,8 +584,9 @@ class Writer(object):
     # Reverse keys and values in header field count dictionary
     counts = dict((v,k) for k,v in field_counts.iteritems())
 
-    def __init__(self, stream, template, lineterminator="\r\n", quoting=csv.QUOTE_NONE):
-        self.writer = csv.writer(stream, delimiter="\t", lineterminator=lineterminator, quoting=quoting)
+    def __init__(self, stream, template, lineterminator="\r\n", quotechar="", quoting=csv.QUOTE_NONE):
+        self.writer = csv.writer(stream, delimiter="\t", lineterminator=lineterminator, quotechar=quotechar,
+                                 quoting=quoting)
         self.template = template
         self.stream = stream
 
