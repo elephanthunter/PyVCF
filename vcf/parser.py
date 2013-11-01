@@ -96,6 +96,7 @@ class _vcf_metadata_parser(object):
             >''', re.VERBOSE)
         self.contig_pattern = re.compile(r'''\#\#contig=<
             ID=(?P<id>[^,]+),
+            .*
             length=(?P<length>-?\d+)
             .*
             >''', re.VERBOSE)
@@ -177,8 +178,37 @@ class _vcf_metadata_parser(object):
         items = re.split("[<>]", meta_string)
         # Removing initial hash marks and final equal sign
         key = items[0][2:-1]
-        hashItems = items[1].split(',')
-        val = OrderedDict(item.split("=") for item in hashItems)
+        # N.B., items can have quoted values, so cannot just split on comma
+        val = OrderedDict()
+        state = 0
+        k = ''
+        v = ''
+        for c in items[1]:
+
+            if state == 0:  # reading item key
+                if c == '=':
+                    state = 1  # end of key, start reading value
+                else:
+                    k += c  # extend key
+            elif state == 1:  # reading item value
+                if v == '' and c == '"':
+                    v += c  # include quote mark in value
+                    state = 2  # start reading quoted value
+                elif c == ',':
+                    val[k] = v  # store parsed item
+                    state = 0  # read next key
+                    k = ''
+                    v = ''
+                else:
+                    v += c
+            elif state == 2:  # reading quoted item value
+                if c == '"':
+                    v += c  # include quote mark in value
+                    state = 1  # end quoting
+                else:
+                    v += c
+        if k != '':
+            val[k] = v
         return key, val
 
     def read_meta(self, meta_string):
@@ -349,7 +379,7 @@ class Reader(object):
                 val = self._map(float, vals)
             elif entry_type == 'Flag':
                 val = True
-            elif entry_type == 'String':
+            elif entry_type in ('String', 'Character'):
                 try:
                     vals = entry[1].split(',') # commas are reserved characters indicating multiple values
                     val = self._map(str, vals)
@@ -527,7 +557,9 @@ class Reader(object):
                 qual = None
 
         filt = row[6]
-        if filt == 'PASS' or filt == '.':
+        if filt == '.':
+            filt = None
+        elif filt == 'PASS':
             filt = []
         else:
             filt = filt.split(';')
@@ -584,8 +616,9 @@ class Writer(object):
     # Reverse keys and values in header field count dictionary
     counts = dict((v,k) for k,v in field_counts.iteritems())
 
-    def __init__(self, stream, template, lineterminator="\r\n", quoting=csv.QUOTE_NONE):
-        self.writer = csv.writer(stream, delimiter="\t", lineterminator=lineterminator, quoting=quoting)
+    def __init__(self, stream, template, lineterminator="\r\n", quotechar="", quoting=csv.QUOTE_NONE):
+        self.writer = csv.writer(stream, delimiter="\t", lineterminator=lineterminator, quotechar=quotechar,
+                                 quoting=quoting)
         self.template = template
         self.stream = stream
 
@@ -610,6 +643,8 @@ class Writer(object):
             stream.write(two.format(key="FILTER", *line))
         for line in template.alts.itervalues():
             stream.write(two.format(key="ALT", *line))
+        for line in template.contigs.itervalues():
+            stream.write('##contig=<ID={0},length={1}>\n'.format(*line))
 
         self._write_header()
 

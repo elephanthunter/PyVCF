@@ -41,6 +41,8 @@ class TestVcfSpecs(unittest.TestCase):
                     if 'HQ' in c.data and c.data.HQ is not None:
                         self.assertEqual(type(c.data.HQ),  type([]))
 
+
+
     def test_vcf_4_1(self):
         reader = vcf.Reader(fh('example-4.1.vcf'))
         self.assertEqual(reader.metadata['fileformat'],  'VCFv4.1')
@@ -100,7 +102,6 @@ class TestVcfSpecs(unittest.TestCase):
                 print(c)
                 assert c
 
-
 class TestGatkOutput(unittest.TestCase):
 
     filename = 'gatk.vcf'
@@ -125,6 +126,7 @@ class TestGatkOutput(unittest.TestCase):
 
     def testInfos(self):
         self.assertEqual(set(self.reader.infos), set(self.infos))
+
 
     def testCalls(self):
         n = 0
@@ -155,6 +157,7 @@ class TestFreebayesOutput(TestGatkOutput):
             'XAM', 'XRS', 'RPPR', 'NS', 'RUN', 'CpG', 'TYPE']
     n_calls = 104
 
+
     def testParse(self):
         reader = vcf.Reader(fh('freebayes.vcf'))
         print(reader.samples)
@@ -165,7 +168,6 @@ class TestFreebayesOutput(TestGatkOutput):
             for x in r:
                 assert x
         assert n == self.n_calls
-
 
 class TestSamtoolsOutput(unittest.TestCase):
 
@@ -477,6 +479,7 @@ class TestRecord(unittest.TestCase):
             elif var.POS == 18665128:
                 self.assertEqual("sv", type)
 
+
     def test_var_subtype(self):
         reader = vcf.Reader(fh('example-4.0.vcf'))
         for var in reader:
@@ -685,13 +688,13 @@ class TestCall(unittest.TestCase):
             elif var.POS == 1234567:
                 self.assertEqual([None,1,2], gt_types)
 
-
 class TestTabix(unittest.TestCase):
 
     def setUp(self):
         self.reader = vcf.Reader(fh('tb.vcf.gz', 'rb'))
 
         self.run = vcf.parser.pysam is not None
+
 
     def testFetchRange(self):
         if not self.run:
@@ -719,12 +722,15 @@ class TestTabix(unittest.TestCase):
         assert site is None
 
 
+
+
 class TestOpenMethods(unittest.TestCase):
 
     samples = 'NA00001 NA00002 NA00003'.split()
 
     def fp(self, fname):
         return os.path.join(os.path.dirname(__file__), fname)
+
 
     def testOpenFilehandle(self):
         r = vcf.Reader(fh('example-4.0.vcf'))
@@ -745,6 +751,7 @@ class TestOpenMethods(unittest.TestCase):
 
 
 class TestFilter(unittest.TestCase):
+
 
     def testApplyFilter(self):
         # FIXME: broken with distribute
@@ -774,6 +781,7 @@ class TestFilter(unittest.TestCase):
             else:
                 assert 'sq30' not in r.FILTER
         assert n == 2
+
 
     def testApplyMultipleFilters(self):
         # FIXME: broken with distribute
@@ -861,31 +869,7 @@ class TestUtils(unittest.TestCase):
                              expected.split())
 
 
-class TestVcfOutputFormat(unittest.TestCase):
 
-    def test_missing_field_in_format_output(self):
-        reader = vcf.Reader(fh('missing_field_in_format.vcf'))
-        out = StringIO()
-        writer = vcf.Writer(out, reader)
-
-        records = list(reader)
-
-        for record in records:
-            writer.write_record(record)
-        out.seek(0)
-        reader2 = vcf.Reader(out)
-
-        self.assertEquals(reader.samples, reader2.samples)
-        self.assertEquals(reader.formats, reader2.formats)
-        self.assertEquals(reader.infos, reader2.infos)
-
-        for l, r in zip(records, reader2):
-            self.assertEquals(l.samples, r.samples)
-
-            # test for call data equality, since equality on the sample calls
-            # may not always mean their data are all equal
-            for l_call, r_call in zip(l.samples, r.samples):
-                self.assertEqual(l_call.data, r_call.data)
 
 suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestGatkOutput))
 suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestFreebayesOutput))
@@ -904,4 +888,3 @@ suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRecord))
 suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCall))
 suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRegression))
 suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestVcfSpecs))
-suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestVcfOutputFormat))

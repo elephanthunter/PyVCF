@@ -35,6 +35,13 @@ class _Call(object):
                 and self.sample == other.sample
                 and self.gt_type == other.gt_type)
 
+    def __getstate__(self):
+        return dict((attr, getattr(self, attr)) for attr in self.__slots__)
+
+    def __setstate__(self, state):
+        for attr in self.__slots__:
+            setattr(self, attr, state.get(attr))
+
     def gt_phase_char(self):
         return "/" if not self.phased else "|"
 
@@ -156,7 +163,10 @@ class _Record(object):
         self.FORMAT = self.FORMAT + ':' + fmt
 
     def add_filter(self, flt):
-        self.FILTER.append(flt)
+        if self.FILTER is None:
+            self.FILTER = [flt]
+        else:
+            self.FILTER.append(flt)
 
     def add_info(self, info, value=True):
         self.INFO[info] = value
@@ -539,5 +549,9 @@ def make_calldata_tuple(fields):
             dat = ", ".join(["%s=%s" % (x, y)
                 for (x, y) in zip(self._fields, self)])
             return "CallData(" + dat + ')'
+
+        def __reduce__(self):
+            args = super(CallData, self).__reduce__()
+            return make_calldata_tuple, (fields, )
 
     return CallData
